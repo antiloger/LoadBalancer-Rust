@@ -8,18 +8,19 @@ use std::sync::{
 
 use tokio::sync::RwLock;
 
+#[derive(Debug)]
 pub struct Server {
-    url: String,
+    addr: String,
+    port: u16,
     alive: Arc<RwLock<bool>>,
-    reverse_proxy: String,
 }
 
 impl Server {
-    pub fn new(url: String, setalive: bool, rp: String) -> Self {
+    pub fn new(addr: String, port: u16, setalive: bool) -> Self {
         Server {
-            url,
+            addr,
+            port,
             alive: Arc::new(RwLock::new(false)),
-            reverse_proxy: rp,
         }
     }
 
@@ -33,15 +34,16 @@ impl Server {
     }
 }
 
+#[derive(Debug)]
 pub struct ServersPool {
     servers: Arc<RwLock<Vec<Server>>>,
     current: Arc<AtomicU64>,
 }
 
 impl ServersPool {
-    pub fn new() -> Self {
+    pub fn new(servers: Vec<Server>) -> Self {
         ServersPool {
-            servers: Arc::new(RwLock::new(Vec::new())),
+            servers: Arc::new(RwLock::new(servers)),
             current: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -78,5 +80,15 @@ impl ServersPool {
         }
 
         None
+    }
+
+    pub async fn get_peer_addr(&self, idx: usize) -> (String, u16) {
+        let sev = self.servers.read().await;
+        (sev[idx].addr.clone(), sev[idx].port)
+    }
+
+    pub async fn set_server_status(&self, idx: usize, status: bool) {
+        let sev = self.servers.read().await;
+        sev[idx].set_alive(status).await
     }
 }

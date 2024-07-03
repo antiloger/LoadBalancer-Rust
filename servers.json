@@ -1,0 +1,18 @@
+{
+  "LbAddr": "127.0.0.1",
+  "LbPort": 3000,
+  "Servers": [
+    {
+      "Addr": "127.0.0.1",
+      "Port": 3001,
+      "Alive": true,
+      "LogFile": "path/path"
+    },
+    {
+      "Addr": "127.0.0.1",
+      "Port": 3002,
+      "Alive": true,
+      "LogFile": "path/path1"
+    }
+  ]
+}
