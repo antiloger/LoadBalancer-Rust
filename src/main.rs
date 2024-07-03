@@ -16,7 +16,9 @@ mod rrlb;
 
 #[tokio::main]
 async fn main() {
-    read_servers()
+    env_logger::init();
+    let pool = read_servers();
+    server(pool).await.unwrap();
 }
 
 // async fn proxy_handler(req: Request<impl hyper::body::Body>) -> Result<Response<Body>, hyper::Error> {
@@ -35,13 +37,17 @@ async fn get_server(serpool: &Arc<ServersPool>) -> Result<(TcpStream, usize), LB
         match TcpStream::connect(peer_addr).await {
             Ok(s) => return Ok((s, peer_id)),
             Err(e) => {
-                println!("{peer_id} server is not response: \n{e}");
                 serpool.set_server_status(peer_id, false).await;
+                log::error!(
+                    "server {peer_id} dosen't response | turn off the server : \n{:?}",
+                    e
+                );
                 continue;
             }
         };
     }
 
+    log::error!("CRITICAL: No Peer Error");
     Err(LBError::NoPeerError)
 }
 
@@ -77,21 +83,23 @@ async fn proxy_handler(
 
     tokio::task::spawn(async move {
         if let Err(err) = conn.await {
-            println!("Connection Failed: {:?}", err);
+            log::error!("error on connection: {:?}", err);
         }
     });
 
     let resp = sender.send_request(req).await.unwrap();
-
+    log::info!("server:{peer_id} | {uri_str}");
     Ok(resp.map(|b| b.boxed()))
 }
 
-async fn server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn server(serverpool: ServersPool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr2 = serverpool.get_addr();
 
     let listener = TcpListener::bind(addr).await?;
 
-    let server_status = Arc::new(ServersPool::new(Vec::new()));
+    let server_status = Arc::new(serverpool);
+    log::info!("Server Start on {:?}", addr2);
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -112,7 +120,8 @@ async fn server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .with_upgrades()
                 .await
             {
-                eprint!("error serving connection: {:?}", err)
+                eprint!("error serving connection: {:?}", err);
+                log::error!("error serving connection {:?}", err);
             }
         });
     }

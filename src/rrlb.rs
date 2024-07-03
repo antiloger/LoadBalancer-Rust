@@ -20,7 +20,7 @@ impl Server {
         Server {
             addr,
             port,
-            alive: Arc::new(RwLock::new(false)),
+            alive: Arc::new(RwLock::new(setalive)),
         }
     }
 
@@ -36,16 +36,24 @@ impl Server {
 
 #[derive(Debug)]
 pub struct ServersPool {
+    Addr: String,
+    Port: u16,
     servers: Arc<RwLock<Vec<Server>>>,
     current: Arc<AtomicU64>,
 }
 
 impl ServersPool {
-    pub fn new(servers: Vec<Server>) -> Self {
+    pub fn new(servers: Vec<Server>, addr: String, port: u16) -> Self {
         ServersPool {
+            Addr: addr,
+            Port: port,
             servers: Arc::new(RwLock::new(servers)),
             current: Arc::new(AtomicU64::new(0)),
         }
+    }
+
+    pub fn get_addr(&self) -> (String, u16) {
+        (self.Addr.clone(), self.Port)
     }
 
     // TODO: need to handle error -> if the server count 0 or error
@@ -77,6 +85,7 @@ impl ServersPool {
 
                 return Some(idx);
             }
+            log::info!("|| server {idx} is not alive ||");
         }
 
         None

@@ -21,7 +21,7 @@ impl ServerInfo {
             server_vec.push(Server::new(i.Addr.clone(), i.Port, i.Alive));
         }
 
-        ServersPool::new(server_vec)
+        ServersPool::new(server_vec, self.LbAddr.clone(), self.LbPort)
     }
 }
 
@@ -33,10 +33,10 @@ struct Backends {
     LogFile: String,
 }
 
-pub fn read_servers() {
+pub fn read_servers() -> ServersPool {
     let content = fs::read_to_string("servers.json").expect("can not read servers.json");
     let data = serde_json::from_str::<ServerInfo>(&content).expect("can not convert json file");
 
     let d = data.convert();
-    println!("{:#?}", d);
+    d
 }
